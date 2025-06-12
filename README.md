@@ -1,7 +1,3 @@
-<img src="https://r2cdn.perplexity.ai/pplx-full-logo-primary-dark%402x.png" class="logo" width="120"/>
-
-## README.md
-
 # Wikipedia to PowerPoint Generator
 
 This project is an **AI-powered tool** that automatically generates a structured PowerPoint presentation from a given Wikipedia topic. It extracts the main sections from the Wikipedia article, summarizes each section into five key points, and creates a 7-slide presentation with properly formatted content. The font size for all bullet points is set to 20 for clarity and consistency.
