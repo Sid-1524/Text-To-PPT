@@ -95,7 +95,4 @@ This project is open-source and free to use for educational and non-commercial p
 - Built using [`wikipedia`](https://pypi.org/project/wikipedia/) and [`python-pptx`](https://python-pptx.readthedocs.io/).
 - Inspired by the need to automate content creation for presentations from reliable sources[^1].
 
-<div style="text-align: center">⁂</div>
-
-[^1]: projects.ai_tools
 
