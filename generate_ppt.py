@@ -3,18 +3,17 @@ import re
 from pptx import Presentation
 from pptx.util import Pt
 
+MAX_BULLET_CHARS = 120  # Maximum characters per bullet point
+MAX_TOTAL_CHARS = 500   # Maximum total characters per slide content
+
 def clean_input(user_input):
-    """Remove special characters and sanitize input"""
     cleaned = re.sub(r'[^a-zA-Z0-9 ]', '', user_input)
     return re.sub(r'\s+', ' ', cleaned).strip()
 
 def get_wikipedia_page(title):
-    """Robust page retrieval with user-guided fallback"""
     try:
-        # First try exact match without auto-suggest
         return wikipedia.page(title, auto_suggest=False)
     except wikipedia.exceptions.PageError:
-        # Fallback to search with user selection
         results = wikipedia.search(title)
         if not results:
             return None
@@ -35,20 +34,15 @@ def get_wikipedia_page(title):
         return None
 
 def get_valid_sections(page_content):
-    """Extract main sections from Wikipedia content"""
     sections = re.findall(r'^==\s*([^=]+?)\s*==$', page_content, flags=re.MULTILINE)
     return [s.strip() for s in sections 
             if s.lower() not in ('references', 'external links', 'see also', 'notes')]
 
 def create_presentation(main_title, sections):
-    """Generate PowerPoint with selected sections"""
     prs = Presentation()
-    
-    # Title slide
     title_slide = prs.slides.add_slide(prs.slide_layouts[0])
     title_slide.shapes.title.text = main_title
     
-    # Content slides
     for section in sections:
         content = wikipedia.page(main_title, auto_suggest=False).section(section)
         if not content:
@@ -57,15 +51,28 @@ def create_presentation(main_title, sections):
         slide = prs.slides.add_slide(prs.slide_layouts[1])
         slide.shapes.title.text = section
         
-        # Extract first 5 sentences
-        points = re.findall(r'[^.!?]*[.!?]', content)[:5]
+        # Extract first 5 sentences, but enforce max length
+        sentences = re.findall(r'[^.!?]*[.!?]', content)
+        points = []
+        total_chars = 0
+        for sent in sentences:
+            sent = sent.strip()
+            if not sent:
+                continue
+            if len(sent) > MAX_BULLET_CHARS:
+                sent = sent[:MAX_BULLET_CHARS].rstrip() + "..."
+            if total_chars + len(sent) > MAX_TOTAL_CHARS:
+                break
+            points.append(sent)
+            total_chars += len(sent)
+            if len(points) == 5:
+                break
         
-        # Format content
         text_frame = slide.placeholders[1].text_frame
         text_frame.clear()
         for point in points:
             p = text_frame.add_paragraph()
-            p.text = point.strip()
+            p.text = point
             p.level = 0
             p.font.size = Pt(20)
     
@@ -74,7 +81,6 @@ def create_presentation(main_title, sections):
     return filename
 
 def main():
-    """Main execution flow"""
     raw_title = input("Enter Wikipedia topic: ")
     clean_title = clean_input(raw_title)
     
