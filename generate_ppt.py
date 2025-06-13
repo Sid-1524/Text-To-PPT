@@ -3,76 +3,109 @@ import re
 from pptx import Presentation
 from pptx.util import Pt
 
-def get_filtered_sections(title):
+def clean_input(user_input):
+    """Remove special characters and sanitize input"""
+    cleaned = re.sub(r'[^a-zA-Z0-9 ]', '', user_input)
+    return re.sub(r'\s+', ' ', cleaned).strip()
+
+def get_wikipedia_page(title):
+    """Robust page retrieval with user-guided fallback"""
     try:
-        page = wikipedia.page(title)
-        content = page.content
-        # Only top-level sections
-        sections = re.findall(r'^==\s*([^=]+?)\s*==$', content, flags=re.MULTILINE)
-        filtered = [s.strip() for s in sections 
-                    if s.lower() not in ('references', 'external links', 'see also', 'notes')]
-        return filtered
-    except Exception as e:
-        print(f"Section error: {e}")
-        return []
+        # First try exact match without auto-suggest
+        return wikipedia.page(title, auto_suggest=False)
+    except wikipedia.exceptions.PageError:
+        # Fallback to search with user selection
+        results = wikipedia.search(title)
+        if not results:
+            return None
+        print("Did you mean:")
+        for i, res in enumerate(results[:5], 1):
+            print(f"{i}. {res}")
+        choice = input("Enter number or 0 to cancel: ").strip()
+        if choice.isdigit() and 0 < int(choice) <= len(results):
+            return wikipedia.page(results[int(choice)-1], auto_suggest=False)
+        return None
+    except wikipedia.exceptions.DisambiguationError as e:
+        print("Multiple matches found:")
+        for i, opt in enumerate(e.options[:5], 1):
+            print(f"{i}. {opt}")
+        choice = input("Enter number or 0 to cancel: ").strip()
+        if choice.isdigit() and 0 < int(choice) <= len(e.options):
+            return wikipedia.page(e.options[int(choice)-1], auto_suggest=False)
+        return None
 
-def create_custom_ppt(main_title, selected_sections):
+def get_valid_sections(page_content):
+    """Extract main sections from Wikipedia content"""
+    sections = re.findall(r'^==\s*([^=]+?)\s*==$', page_content, flags=re.MULTILINE)
+    return [s.strip() for s in sections 
+            if s.lower() not in ('references', 'external links', 'see also', 'notes')]
+
+def create_presentation(main_title, sections):
+    """Generate PowerPoint with selected sections"""
     prs = Presentation()
-    # Title Slide
-    prs.slides.add_slide(prs.slide_layouts[0]).shapes.title.text = main_title
-
-    for section in selected_sections:
-        try:
-            content = wikipedia.page(main_title).section(section)
-            if not content:
-                continue
-
-            slide = prs.slides.add_slide(prs.slide_layouts[1])
-            slide.shapes.title.text = section
-
-            points = re.findall(r'[^.!?]*[.!?]', content)[:5]
-
-            tf = slide.placeholders[1].text_frame
-            tf.clear()
-
-            for point in points:
-                p = tf.add_paragraph()
-                p.text = point.strip()
-                p.level = 0
-                for run in p.runs:
-                    run.font.size = Pt(20)
-        except Exception as e:
-            print(f"Error in {section}: {e}")
-
-    output_file = f"{main_title.replace(' ', '_')}_presentation.pptx"
-    prs.save(output_file)
-    print(f"PPT saved as {output_file}")
+    
+    # Title slide
+    title_slide = prs.slides.add_slide(prs.slide_layouts[0])
+    title_slide.shapes.title.text = main_title
+    
+    # Content slides
+    for section in sections:
+        content = wikipedia.page(main_title, auto_suggest=False).section(section)
+        if not content:
+            continue
+            
+        slide = prs.slides.add_slide(prs.slide_layouts[1])
+        slide.shapes.title.text = section
+        
+        # Extract first 5 sentences
+        points = re.findall(r'[^.!?]*[.!?]', content)[:5]
+        
+        # Format content
+        text_frame = slide.placeholders[1].text_frame
+        text_frame.clear()
+        for point in points:
+            p = text_frame.add_paragraph()
+            p.text = point.strip()
+            p.level = 0
+            p.font.size = Pt(20)
+    
+    filename = f"{main_title.replace(' ', '_')}_presentation.pptx"
+    prs.save(filename)
+    return filename
 
 def main():
-    main_title = input("Enter the Wikipedia topic: ").strip()
-    sections = get_filtered_sections(main_title)
+    """Main execution flow"""
+    raw_title = input("Enter Wikipedia topic: ")
+    clean_title = clean_input(raw_title)
+    
+    page = get_wikipedia_page(clean_title)
+    if not page:
+        print("Error: Could not find Wikipedia page")
+        return
+        
+    sections = get_valid_sections(page.content)
     if not sections:
-        print("No sections found.")
+        print("No valid sections found")
         return
-
-    print("\nAvailable subtopics/sections:")
-    for idx, section in enumerate(sections):
-        print(f"{idx+1}. {section}")
-
-    print("\nEnter the numbers of the sections you want to include, separated by commas (e.g., 1,3,5):")
-    selected = input().strip()
+    
+    print("\nAvailable sections:")
+    for i, section in enumerate(sections, 1):
+        print(f"{i}. {section}")
+    
+    selected = input("\nEnter section numbers to include (comma-separated): ")
     try:
-        indices = [int(x)-1 for x in selected.split(",") if x.strip().isdigit()]
+        indices = [int(i)-1 for i in selected.split(',') if i.strip().isdigit()]
         selected_sections = [sections[i] for i in indices if 0 <= i < len(sections)]
-    except Exception as e:
-        print("Invalid input. Please enter valid numbers separated by commas.")
+    except:
+        print("Invalid selection")
         return
-
+    
     if not selected_sections:
-        print("No valid sections selected.")
+        print("No sections selected")
         return
-
-    create_custom_ppt(main_title, selected_sections)
+    
+    output_file = create_presentation(page.title, selected_sections)
+    print(f"\nPresentation saved as {output_file}")
 
 if __name__ == "__main__":
     main()
