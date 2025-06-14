@@ -1,32 +1,69 @@
-# Wikipedia to PowerPoint Generator
+<img src="https://r2cdn.perplexity.ai/pplx-full-logo-primary-dark%402x.png" class="logo" width="120"/>
 
-This project is an **AI-powered tool** that automatically generates a structured PowerPoint presentation from a given Wikipedia topic. It extracts the main sections from the Wikipedia article, summarizes each section into five key points, and creates a 7-slide presentation with properly formatted content. The font size for all bullet points is set to 20 for clarity and consistency.
+# make the required changes in the readme and rewrite it
+
+Certainly! Here’s a rewritten **README.md** reflecting the latest code and requirements:
+
+---
+
+# AI-Powered PowerPoint Generator
+
+This project automatically generates a detailed, professional PowerPoint presentation on any technical topic using the GPT-4.1 API (via your GitHub Model API key).
+The script creates slides with maximized, well-formatted bullet points, ensuring all content fits the canvas and is easy to read.
 
 ---
 
 ## Features
 
-- **Automatic Section Extraction:** Fetches the top-level sections (e.g., "Terminology", "Impacts") from a Wikipedia article.
-- **Content Summarization:** Extracts the first five sentences from each section as bullet points.
-- **PowerPoint Generation:** Creates a `.pptx` file with a title slide and up to 7 content slides, each titled with the section name.
-- **Custom Formatting:** Sets the font size of all slide content to 20 for readability.
-- **Easy to Use:** Just specify your main topic and run the script.
+- **GPT-4.1 Content Generation:** Uses your GitHub Model API key to generate detailed, technical, and well-structured slide content.
+- **No Slide Numbering:** Slide titles are clean and free from numbering or prefixes.
+- **Professional Formatting:**
+    - Slide titles: 28pt, bold
+    - All content: 20pt, bulleted
+    - Content box is shifted up by 7 pixels for optimal layout
+- **Maximized Content:** Each slide fits as much detailed content as possible without overflowing the slide area.
+- **No Images:** Text-only slides for clarity and focus.
+- **Environment Variable Support:** Securely manage your API key with a `.env` file.
 
 ---
 
-## Installation
+## Setup
 
-1. **Clone the repository:**
+### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/Sid-1524/text-to-ppt.git
-cd wikipedia-to-ppt
+git clone <your-repo-url>
+cd <your-repo-folder>
 ```
 
-2. **Install dependencies:**
+
+### 2. Install Dependencies
 
 ```bash
-pip install wikipedia python-pptx
+pip install python-pptx openai python-dotenv
+```
+
+
+### 3. Configure Your API Key
+
+Create a `.env` file in your project directory with this line (no quotes):
+
+```
+GITHUB_TOKEN=your_github_model_api_key
+```
+
+Or, set it in your terminal before running the script:
+
+- **Windows:**
+
+```cmd
+set GITHUB_TOKEN=your_github_model_api_key
+```
+
+- **Mac/Linux:**
+
+```bash
+export GITHUB_TOKEN=your_github_model_api_key
 ```
 
 
@@ -34,67 +71,49 @@ pip install wikipedia python-pptx
 
 ## Usage
 
-1. **Edit the script (if needed):**
-    - Change the topic in the last line of the script:
-
-```python
-create_complete_ppt("Climate Change")
-```
-
-    - Replace `"Climate Change"` with your desired Wikipedia topic.
-2. **Run the script:**
+Run the script:
 
 ```bash
-python your_script_name.py
+python your_script.py
 ```
 
-3. **Output:**
-    - A PowerPoint file named `<Your_Topic>_presentation.pptx` will be created in the project directory.
+- Enter your desired presentation topic when prompted.
+- The script will generate a PowerPoint file named `<Topic>_presentation.pptx` in the same folder.
 
 ---
 
-## Example
+## Output Example
 
-If you run the script with the topic `"Climate Change"`, the tool will:
-
-- Create a title slide: **Climate Change**
-- Generate up to 7 slides, each titled with a main section from the Wikipedia article (e.g., "Terminology", "Impacts").
-- Add five bullet points (sentences) under each section, with font size set to 20.
-
----
-
-## Project Structure
-
-```
-wikipedia-to-ppt/
-├── your_script_name.py
-├── README.md
-└── <output_presentation>.pptx
-```
-
+- **Title Slide:** Topic name, 28pt, bold
+- **Up to 7 Content Slides:**
+    - Slide title, 28pt, bold
+    - All content bulleted, 20pt
+    - Content box shifted up by 7 pixels
+    - No slide numbering, no images
+    - Each slide contains as much detailed content as fits the canvas
 
 ---
 
 ## Notes
 
-- The script uses the `wikipedia` Python library to fetch content and `python-pptx` to generate presentations.
-- Only the first seven main sections with available content are included.
-- Bullet points are extracted as the first five sentences from each section.
-- For best results, use topics with well-structured Wikipedia pages.
+- The `.env` file should **not** be committed to version control. Add `.env` to your `.gitignore`.
+- The script uses the [python-pptx](https://python-pptx.readthedocs.io/), [openai](https://pypi.org/project/openai/), and [python-dotenv](https://pypi.org/project/python-dotenv/) libraries.
+- Make sure your GitHub Model API key has access to the GPT-4.1 model endpoint.
 
 ---
 
-## License and Attribution
+## License
 
-- The code in this repository is licensed under the MIT License.
-- Any content generated from Wikipedia using this tool is licensed under the [Creative Commons Attribution-ShareAlike 4.0 International License (CC BY-SA 4.0)](https://creativecommons.org/licenses/by-sa/4.0/). Users must provide proper attribution to Wikipedia and the original article authors, and distribute any derivative works under the same license.
-- When distributing presentations or other outputs generated by this tool that include Wikipedia content, please include a link to the original Wikipedia article and a note about the CC BY-SA 4.0 license.
+This project is open-source and free to use for educational and non-commercial purposes.
 
 ---
 
 ## Acknowledgments
 
-- Built using [`wikipedia`](https://pypi.org/project/wikipedia/) and [`python-pptx`](https://python-pptx.readthedocs.io/).
-- Inspired by the need to automate content creation for presentations from reliable sources[^1].
+- Built with [python-pptx](https://python-pptx.readthedocs.io/), [OpenAI Python SDK](https://pypi.org/project/openai/), and [python-dotenv](https://pypi.org/project/python-dotenv/).
+- GPT-4.1 content powered by your GitHub-hosted model endpoint.
 
+---
+
+**Enjoy creating high-quality presentations with just one prompt!**
 
