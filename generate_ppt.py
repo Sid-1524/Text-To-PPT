@@ -16,7 +16,7 @@ MODEL_NAME = "openai/gpt-4.1"
 MAX_SLIDES = 7
 MAX_BULLET_CHARS = 180
 MAX_TOTAL_CHARS = 1500
-FONT_SIZE_TITLE = Pt(28)
+FONT_SIZE_TITLE = Pt(40)
 FONT_SIZE_CONTENT = Pt(20)
 
 def generate_slides_content(topic):
