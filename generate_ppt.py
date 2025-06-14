@@ -1,117 +1,141 @@
-import wikipedia
+import os
 import re
+from openai import OpenAI
 from pptx import Presentation
 from pptx.util import Pt
+from dotenv import load_dotenv
 
-MAX_BULLET_CHARS = 120  # Maximum characters per bullet point
-MAX_TOTAL_CHARS = 500   # Maximum total characters per slide content
+# Load environment variables
+load_dotenv()
 
-def clean_input(user_input):
-    cleaned = re.sub(r'[^a-zA-Z0-9 ]', '', user_input)
-    return re.sub(r'\s+', ' ', cleaned).strip()
+# Configuration
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+ENDPOINT = "https://models.github.ai/inference"
+MODEL_NAME = "openai/gpt-4.1"
 
-def get_wikipedia_page(title):
-    try:
-        return wikipedia.page(title, auto_suggest=False)
-    except wikipedia.exceptions.PageError:
-        results = wikipedia.search(title)
-        if not results:
-            return None
-        print("Did you mean:")
-        for i, res in enumerate(results[:5], 1):
-            print(f"{i}. {res}")
-        choice = input("Enter number or 0 to cancel: ").strip()
-        if choice.isdigit() and 0 < int(choice) <= len(results):
-            return wikipedia.page(results[int(choice)-1], auto_suggest=False)
-        return None
-    except wikipedia.exceptions.DisambiguationError as e:
-        print("Multiple matches found:")
-        for i, opt in enumerate(e.options[:5], 1):
-            print(f"{i}. {opt}")
-        choice = input("Enter number or 0 to cancel: ").strip()
-        if choice.isdigit() and 0 < int(choice) <= len(e.options):
-            return wikipedia.page(e.options[int(choice)-1], auto_suggest=False)
-        return None
+MAX_SLIDES = 7
+MAX_BULLET_CHARS = 180
+MAX_TOTAL_CHARS = 1500
+FONT_SIZE_TITLE = Pt(28)
+FONT_SIZE_CONTENT = Pt(20)
 
-def get_valid_sections(page_content):
-    sections = re.findall(r'^==\s*([^=]+?)\s*==$', page_content, flags=re.MULTILINE)
-    return [s.strip() for s in sections 
-            if s.lower() not in ('references', 'external links', 'see also', 'notes')]
+def generate_slides_content(topic):
+    """Generate presentation content using AI model"""
+    client = OpenAI(base_url=ENDPOINT, api_key=GITHUB_TOKEN)
+    
+    response = client.chat.completions.create(
+        model=MODEL_NAME,
+        messages=[
+            {"role": "system", "content": """Create detailed technical content with:
+             - Full sentence explanations
+             - Concrete examples/data
+             - 5 substantial points per slide"""},
+            {"role": "user", "content": f"""Create a 7-slide structure about {topic} with:
+                ## [Section Title]
+                - Detailed point with technical specifications
+                - Example: 'CNNs use 3x3 kernels with ReLU activation'
+                - Continue for 5 substantial points per slide"""}
+        ],
+        temperature=0.7,
+        top_p=0.9,
+        max_tokens=2000
+    )
+    return response.choices[0].message.content
 
-def create_presentation(main_title, sections):
+def parse_content(content):
+    """Parse AI response into structured slides"""
+    slides = []
+    current_slide = {"title": "", "points": []}
+    
+    for line in content.split('\n'):
+        line = line.strip()
+        if line.startswith('## '):
+            # Clean title from numbering
+            title = re.sub(r'^(Slide\s*\d+:|[\d.]+)\s*', '', line[3:], flags=re.IGNORECASE).strip()
+            if current_slide["title"]:
+                slides.append(current_slide)
+                current_slide = {"title": "", "points": []}
+            current_slide["title"] = title
+        elif line.startswith('- '):
+            current_slide["points"].append(line[2:].strip())
+    
+    if current_slide["title"]:
+        slides.append(current_slide)
+    
+    return slides[:MAX_SLIDES]
+
+def optimize_content(points):
+    """Ensure content fits slide canvas"""
+    optimized = []
+    total_chars = 0
+    
+    for point in points:
+        # Truncate long points but preserve sentence endings
+        if len(point) > MAX_BULLET_CHARS:
+            point = point[:MAX_BULLET_CHARS].rsplit('.', 1)[0] + '...'
+        
+        if total_chars + len(point) <= MAX_TOTAL_CHARS:
+            optimized.append(point)
+            total_chars += len(point)
+        else:
+            remaining = MAX_TOTAL_CHARS - total_chars
+            if remaining > 40:  # Minimum meaningful content
+                optimized.append(point[:remaining-3] + '...')
+            break
+    
+    return optimized
+
+def create_presentation(topic, slides):
+    """Generate PowerPoint file"""
     prs = Presentation()
+    
+    # Title Slide
     title_slide = prs.slides.add_slide(prs.slide_layouts[0])
-    title_slide.shapes.title.text = main_title
-    
-    for section in sections:
-        content = wikipedia.page(main_title, auto_suggest=False).section(section)
-        if not content:
-            continue
-            
-        slide = prs.slides.add_slide(prs.slide_layouts[1])
-        slide.shapes.title.text = section
+    title_shape = title_slide.shapes.title
+    title_shape.text = topic
+    title_shape.text_frame.paragraphs[0].font.size = FONT_SIZE_TITLE
+    title_shape.text_frame.paragraphs[0].font.bold = True
+
+    # Content Slides
+    for slide in slides:
+        content_slide = prs.slides.add_slide(prs.slide_layouts[1])
         
-        # Extract first 5 sentences, but enforce max length
-        sentences = re.findall(r'[^.!?]*[.!?]', content)
-        points = []
-        total_chars = 0
-        for sent in sentences:
-            sent = sent.strip()
-            if not sent:
-                continue
-            if len(sent) > MAX_BULLET_CHARS:
-                sent = sent[:MAX_BULLET_CHARS].rstrip() + "..."
-            if total_chars + len(sent) > MAX_TOTAL_CHARS:
-                break
-            points.append(sent)
-            total_chars += len(sent)
-            if len(points) == 5:
-                break
+        # Slide Title
+        title_box = content_slide.shapes.title
+        title_box.text = slide["title"]
+        title_box.text_frame.paragraphs[0].font.size = FONT_SIZE_TITLE
+        title_box.text_frame.paragraphs[0].font.bold = True
         
-        text_frame = slide.placeholders[1].text_frame
-        text_frame.clear()
-        for point in points:
-            p = text_frame.add_paragraph()
+        # Content Body
+        content_frame = content_slide.placeholders[1].text_frame
+        content_frame.clear()
+        
+        for point in optimize_content(slide["points"]):
+            p = content_frame.add_paragraph()
             p.text = point
+            p.font.size = FONT_SIZE_CONTENT
             p.level = 0
-            p.font.size = Pt(20)
-    
-    filename = f"{main_title.replace(' ', '_')}_presentation.pptx"
+            p.space_after = Pt(6)  # Tight spacing
+
+    filename = f"{topic.replace(' ', '_')}_presentation.pptx"
     prs.save(filename)
     return filename
 
 def main():
-    raw_title = input("Enter Wikipedia topic: ")
-    clean_title = clean_input(raw_title)
+    """Main execution flow"""
+    topic = input("Enter presentation topic: ").strip()
     
-    page = get_wikipedia_page(clean_title)
-    if not page:
-        print("Error: Could not find Wikipedia page")
-        return
-        
-    sections = get_valid_sections(page.content)
-    if not sections:
-        print("No valid sections found")
+    if not GITHUB_TOKEN:
+        print("Error: GITHUB_TOKEN not found in environment")
         return
     
-    print("\nAvailable sections:")
-    for i, section in enumerate(sections, 1):
-        print(f"{i}. {section}")
-    
-    selected = input("\nEnter section numbers to include (comma-separated): ")
     try:
-        indices = [int(i)-1 for i in selected.split(',') if i.strip().isdigit()]
-        selected_sections = [sections[i] for i in indices if 0 <= i < len(sections)]
-    except:
-        print("Invalid selection")
-        return
-    
-    if not selected_sections:
-        print("No sections selected")
-        return
-    
-    output_file = create_presentation(page.title, selected_sections)
-    print(f"\nPresentation saved as {output_file}")
+        content = generate_slides_content(topic)
+        slides = parse_content(content)
+        output_file = create_presentation(topic, slides)
+        print(f"Successfully created: {output_file}")
+    except Exception as e:
+        print(f"Error generating presentation: {str(e)}")
 
 if __name__ == "__main__":
     main()
