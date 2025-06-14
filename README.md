@@ -32,8 +32,8 @@ The script creates slides with maximized, well-formatted bullet points, ensuring
 ### 1. Clone the Repository
 
 ```bash
-git clone <your-repo-url>
-cd <your-repo-folder>
+git clone https://github.com/Sid-1524/Text-To-PPT.git
+cd Tex-To-PPT
 ```
 
 
@@ -51,8 +51,6 @@ Create a `.env` file in your project directory with this line (no quotes):
 ```
 GITHUB_TOKEN=your_github_model_api_key
 ```
-
-Or, set it in your terminal before running the script:
 
 - **Windows:**
 
